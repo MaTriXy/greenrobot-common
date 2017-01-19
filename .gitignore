@@ -6,3 +6,8 @@ bin/
 build/
 target/
 *.iml
+.gradle/
+
+# Local configuration files (sdk path, etc)
+local.properties
+gradle.properties
