@@ -96,12 +96,13 @@ public class FileUtils {
     }
 
     /** To read an object in a quick & dirty way. Prepare to handle failures when object serialization changes! */
-    public static Object readObject(File file) throws IOException,
+    @SuppressWarnings("unchecked")
+    public static <T> T readObject(File file) throws IOException,
             ClassNotFoundException {
         FileInputStream fileIn = new FileInputStream(file);
         ObjectInputStream in = new ObjectInputStream(new BufferedInputStream(fileIn));
         try {
-            return in.readObject();
+            return (T) in.readObject();
         } finally {
             IoUtils.safeClose(in);
         }
@@ -121,7 +122,7 @@ public class FileUtils {
         }
     }
 
-    /** @return MD5 digest (32 characters). */
+    /** @return MD5 digest (32 hex characters). */
     public static String getMd5(File file) throws IOException {
         InputStream in = new BufferedInputStream(new FileInputStream(file));
         try {
@@ -131,11 +132,21 @@ public class FileUtils {
         }
     }
 
-    /** @return SHA-1 digest (40 characters). */
+    /** @return SHA-1 digest (40 hex characters). */
     public static String getSha1(File file) throws IOException {
         InputStream in = new BufferedInputStream(new FileInputStream(file));
         try {
             return IoUtils.getSha1(in);
+        } finally {
+            IoUtils.safeClose(in);
+        }
+    }
+
+    /** @return SHA-256 digest (64 hex characters). */
+    public static String getSha256(File file) throws IOException {
+        InputStream in = new BufferedInputStream(new FileInputStream(file));
+        try {
+            return IoUtils.getSha256(in);
         } finally {
             IoUtils.safeClose(in);
         }
@@ -150,4 +161,59 @@ public class FileUtils {
         }
     }
 
+    /**
+     * Deletes all files within the given directory recursively (including subdirectories).
+     * This method fails fast with an IOException on the first file that could not be deleted.
+     */
+    public static void deleteDirRecursive(File dir) throws IOException {
+        File failed = deleteDirRecursiveInternal(dir, true);
+        if (failed != null) {
+            throw new IOException("Could not delete file: " + failed.getPath());
+        }
+    }
+
+    /**
+     * Deletes all files within the given directory recursively (including subdirectories).
+     * It will try to delete as many files as possible (best effort) and will not fail on files that couldn't be
+     * deleted.
+     *
+     * @return true if the given dir does not exist anymore on completion of this method
+     */
+    public static boolean deleteDirRecursiveBestEffort(File dir) {
+        deleteDirRecursiveInternal(dir, false);
+        return !dir.exists();
+    }
+
+    /**
+     * @return File that could not be deleted (fail fast mode only)
+     */
+    private static File deleteDirRecursiveInternal(File dir, boolean failFast) {
+        if (!dir.exists()) {
+            return null;
+        }
+
+        File[] files = dir.listFiles();
+        if (files == null) {
+            return null;
+        }
+        for (File file : files) {
+            if (file.isDirectory()) {
+                File failed = deleteDirRecursiveInternal(file, failFast);
+                if (failFast && failed != null) {
+                    return failed;
+                }
+            }
+            if (!file.delete()) {
+                if (failFast && file.exists()) { // OK if file does not exist anymore (e.g. concurrent deletion)
+                    return file;
+                }
+            }
+        }
+        if (!dir.delete()) {
+            if (failFast && dir.exists()) { // OK if file does not exist anymore (e.g. concurrent deletion)
+                return dir;
+            }
+        }
+        return null;
+    }
 }

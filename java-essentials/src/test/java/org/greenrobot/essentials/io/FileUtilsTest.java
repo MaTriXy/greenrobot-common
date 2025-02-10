@@ -26,6 +26,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Random;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 /** Implicitly tests some of IoUtils. */
 public class FileUtilsTest {
 
@@ -56,28 +59,30 @@ public class FileUtilsTest {
     public void testWriteAndReadObject() throws Exception {
         String text = "Hello, let's put in some Umlauts: öäüÖÄÜ €";
         String text2 = "And one more";
-        ArrayList<String> strings = new ArrayList<String>();
+        ArrayList<String> strings = new ArrayList<>();
         strings.add(text);
         strings.add(text2);
         FileUtils.writeObject(file, strings);
-        ArrayList<String> strings2 = (ArrayList<String>) FileUtils.readObject(file);
+        ArrayList<String> strings2 = FileUtils.readObject(file);
         Assert.assertEquals(strings.size(), strings2.size());
         Assert.assertEquals(text, strings2.get(0));
         Assert.assertEquals(text2, strings2.get(1));
     }
 
     @Test
-    public void testDigestMd5AndSha1() throws IOException, ClassNotFoundException {
+    public void testDigestMd5AndSha1() throws IOException {
         byte[] content = new byte[33333];
         new Random(42).nextBytes(content);
         FileUtils.writeBytes(file, content);
 
-        Assert.assertEquals("E4DB2A1C03CA891DDDCE45150570ABEB", FileUtils.getMd5(file).toUpperCase());
-        Assert.assertEquals("5123C97498170FFA46056190D9439DA203E5234C", FileUtils.getSha1(file).toUpperCase());
+        Assert.assertEquals("E4DB2A1C03CA891DDDCE45150570ABEB", FileUtils.getMd5(file));
+        Assert.assertEquals("5123C97498170FFA46056190D9439DA203E5234C", FileUtils.getSha1(file));
+        Assert.assertEquals("B098145996F6AF622C8B4373A590039A94890E79482B6E97D800C49943915975",
+                FileUtils.getSha256(file));
     }
 
     @Test
-    public void testUpdateChecksumAndCopy() throws IOException, ClassNotFoundException {
+    public void testUpdateChecksumAndCopy() throws IOException {
         byte[] content = new byte[33333];
         new Random().nextBytes(content);
 
@@ -94,6 +99,27 @@ public class FileUtilsTest {
         murmur3F.reset();
         FileUtils.updateChecksum(file, murmur3F);
         Assert.assertEquals(hash, murmur3F.getValueHexString());
+    }
+
+    @Test
+    public void testDeleteDir() throws IOException {
+        testDeleteDir(true);
+        testDeleteDir(false);
+    }
+
+    private void testDeleteDir(boolean failFast) throws IOException {
+        file.delete();
+        assertTrue(file.mkdir());
+        File subDir = new File(file, "mysub");
+        assertTrue(subDir.mkdir());
+        assertTrue(File.createTempFile("foo", "bar", subDir).exists());
+        if (failFast) {
+            FileUtils.deleteDirRecursive(file);
+        } else {
+            assertTrue(FileUtils.deleteDirRecursiveBestEffort(file));
+        }
+        assertFalse(subDir.exists());
+        assertFalse(file.exists());
     }
 
 }

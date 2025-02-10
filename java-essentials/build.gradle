@@ -1,12 +1,15 @@
+plugins {
+    id "com.github.spotbugs" version "4.5.1"
+}
+
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'signing'
 apply plugin: 'checkstyle'
-apply plugin: 'findbugs'
 
 archivesBaseName = 'essentials'
 group = 'org.greenrobot'
-version = '3.0.0-RC1'
+version = '3.1.0'
 
 sourceCompatibility = 1.7
 targetCompatibility = '1.7'
@@ -30,9 +33,9 @@ configurations {
 }
 
 dependencies {
-    testCompile 'junit:junit:4.12'
-    testCompile 'com.google.guava:guava:19.0' // Murmur3
-    testCompile 'net.jpountz.lz4:lz4:1.2.0' // xxHash
+    testImplementation 'junit:junit:4.13.1'
+    testImplementation "com.google.guava:guava:$guavaVersion-jre" // Murmur3 (& hex)
+    testImplementation 'net.jpountz.lz4:lz4:1.2.0' // xxHash
 
     deployerJars 'org.apache.maven.wagon:wagon-webdav:1.0-beta-2'
 }
@@ -40,7 +43,7 @@ dependencies {
 javadoc {
     failOnError = false
     title = "Essentials ${version} API"
-    options.bottom = 'Available under the Apache License, Version 2.0 - <i>Copyright &#169; 2012-2016 <a href="http://greenrobot.org">greenrobot.org</a>. All Rights Reserved.</i>'
+    options.bottom = 'Available under the Apache License, Version 2.0 - <i>Copyright &#169; 2012-2020 <a href="https://greenrobot.org">greenrobot.org</a>. All Rights Reserved.</i>'
     doLast {
         copy {
             from '../javadoc-style'
@@ -90,6 +93,7 @@ checkstyle {
     sourceSets = [sourceSets.main]
 }
 
+/* Todo port settings to spotbugs
 findbugs {
     toolVersion = '3.0.1'
     excludeFilter = file("findbugs-exclude.xml")
@@ -99,11 +103,23 @@ findbugs {
     sourceSets = [sourceSets.main]
 }
 
-tasks.withType(FindBugs) {
+*/
+
+spotbugsMain {
+    ignoreFailures = true
     reports {
         // switch to html report
         xml.enabled = false
         html.enabled = true
+    }
+}
+
+spotbugsTest {
+    ignoreFailures = true
+    reports {
+        html {
+            enabled = true
+        }
     }
 }
 
@@ -128,7 +144,7 @@ uploadArchives {
                 name 'greenrobot-essentials'
                 packaging 'jar'
                 description 'Essentials for high-performance Android and Java projects'
-                url 'http://greenrobot.org/essentials/'
+                url 'https://greenrobot.org/essentials/'
 
                 scm {
                     url 'https://github.com/greenrobot/essentials'
@@ -158,7 +174,7 @@ uploadArchives {
 
                 organization {
                     name 'greenrobot'
-                    url 'http://greenrobot.org'
+                    url 'https://greenrobot.org'
                 }
             }
         }

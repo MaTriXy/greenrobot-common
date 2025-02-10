@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Markus Junginger, greenrobot (http://greenrobot.org)
+ * Copyright (C) 2014-2020 Markus Junginger, greenrobot (http://greenrobot.org)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,12 @@ import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
 /**
  * Utilities for working with strings like splitting, joining, url-encoding, hex, and digests.
- * See also {@link org.greenrobot.essentials.Base64}.
  *
  * @author markus
  */
@@ -39,25 +39,22 @@ public class StringUtils {
     /**
      * Splits a String based on a single character, which is usually faster than regex-based String.split().
      * NOTE: split("AA;BB;;", ';') == ["AA", "BB", "", ""], this may be different from String.split()
-     *  */
+     */
     public static String[] split(String string, char delimiter) {
         int delimeterCount = 0;
         int start = 0;
         int end;
+        String[] strings = new String[32];
         while ((end = string.indexOf(delimiter, start)) != -1) {
-            delimeterCount++;
+            if (delimeterCount == strings.length) {
+                strings = Arrays.copyOf(strings, strings.length * 2);
+            }
+            strings[delimeterCount++] = string.substring(start, end);
             start = end + 1;
         }
-
-        String[] result = new String[delimeterCount + 1];
-        start = 0;
-        for (int i = 0; i < delimeterCount; i++) {
-            end = string.indexOf(delimiter, start);
-            result[i] = string.substring(start, end);
-            start = end + 1;
-        }
-        result[delimeterCount] = string.substring(start, string.length());
-        return result;
+        strings = Arrays.copyOf(strings, delimeterCount + 1);
+        strings[delimeterCount] = string.substring(start);
+        return strings;
     }
 
     /**
@@ -120,10 +117,20 @@ public class StringUtils {
      * Generates the SHA-1 digest (40 hex characters) for a given String based on UTF-8.
      * The SHA-1 algorithm produces less collisions than MD5.
      *
-     * @return SHA-1 digest .
+     * @return SHA-1 digest
      */
     public static String sha1(String stringToEncode) {
         return digest(stringToEncode, "SHA-1", "UTF-8");
+    }
+
+    /**
+     * Generates the SHA-256 digest (64 hex characters) for a given String based on UTF-8.
+     * The SHA-256 algorithm is less broken than SHA-1.
+     *
+     * @return SHA-256 digest
+     */
+    public static String sha256(String stringToEncode) {
+        return digest(stringToEncode, "SHA-256", "UTF-8");
     }
 
     /**
@@ -140,11 +147,14 @@ public class StringUtils {
     }
 
     public static String hex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int i = 0; i < bytes.length; i++) {
-            int value = bytes[i] & 0xFF;
-            hexChars[i * 2] = HEX_CHARS[value >>> 4];
-            hexChars[i * 2 + 1] = HEX_CHARS[value & 0x0F];
+        int hexCharCount = bytes.length * 2;
+        char[] hexChars = new char[hexCharCount];
+
+        int srcIdx = 0;
+        for (int dstIdx = 0; dstIdx < hexCharCount; ) {
+            int value = bytes[srcIdx++] & 0xFF;
+            hexChars[dstIdx++] = HEX_CHARS[value >>> 4];
+            hexChars[dstIdx++] = HEX_CHARS[value & 0x0F];
         }
         return new String(hexChars);
     }
@@ -183,7 +193,7 @@ public class StringUtils {
     }
 
     /**
-     * Simple HTML/XML entity resolving: Only supports unicode enitities and a very limited number text represented
+     * Simple HTML/XML entity resolving: Only supports unicode entities and a very limited number text represented
      * entities (apos, quot, gt, lt, and amp). There are many more: http://www.w3.org/TR/REC-html40/sgml/dtd.html
      *
      * @param entity The entity name without & and ; (null throws NPE)
